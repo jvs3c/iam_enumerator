@@ -19,7 +19,7 @@ The script specifically checks for the following IAM actions that could allow pr
 - iam:SetDefaultPolicyVersion
 - iam:UpdateAssumeRolePolicy
 - iam:UpdateLoginProfile
-- 
+
 ### How to run
 git clone https://github.com/jvs3c/iam_enumerator
 .\\iam_enumerator.py -k "aws_access_key_id" -s "aws_secret_access_key" -o output.txt
