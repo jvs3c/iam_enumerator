@@ -1,9 +1,13 @@
 import boto3
 import json
 import logging
+from colorama import Fore, Style, init
 
-# Configure logging to output to the console
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+# Initialize colorama for Windows compatibility
+init(autoreset=True)
+
+# Configure logging to output to the console with color
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 # Vulnerable IAM actions to check
 VULNERABLE_ACTIONS = {
@@ -33,6 +37,20 @@ VULNERABLE_ACTIONS = {
     "datapipeline:ActivatePipeline": "Activate a Data Pipeline",
 }
 
+def print_banner():
+    """Print a fancy banner for the IAM enumerator."""
+    banner = f"""
+    ██╗ █████╗ ███╗   ███╗   ███████╗███╗   ██╗███╗   ███╗
+    ██║██╔══██╗████╗ ████║   ██╔════╝████╗  ██║████╗ ████║
+    ██║███████║██╔████╔██║██║█████╗  ██╔██╗ ██║██╔████╔██║
+    ██║██╔══██║██║╚██╔╝██║██║██╔══╝  ██║╚██╗██║██║╚██╔╝██║
+    ██║██║  ██║██║ ╚═╝ ██║   ███████╗██║ ╚████║██║ ╚═╝ ██║
+    ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝   ╚══════╝╚═╝  ╚═══╝╚═╝     ╚═╝
+                                                                  
+                      IAM:enum by jvs3
+    """
+    print(banner)
+
 def enumerate_iam_policies(iam_client, output_file):
     """Enumerate IAM policies attached to users and check for risky actions."""
     try:
@@ -42,7 +60,7 @@ def enumerate_iam_policies(iam_client, output_file):
         # Process each user
         for user in users:
             user_name = user['UserName']
-            logging.info(f"[*] Processing user: {user_name}")
+            logging.info(f"{Fore.YELLOW}[*] Processing user: {user_name}")
 
             # List attached managed policies for the user
             attached_policies = iam_client.list_attached_user_policies(UserName=user_name)['AttachedPolicies']
@@ -50,7 +68,7 @@ def enumerate_iam_policies(iam_client, output_file):
             # Process each attached managed policy
             for policy in attached_policies:
                 policy_arn = policy['PolicyArn']
-                logging.info(f"[*] Checking attached managed policy: {policy_arn} for user: {user_name}")
+                logging.info(f"{Fore.GREEN}[*] Checking attached managed policy: {policy_arn} for user: {user_name}")
 
                 # Get the policy version information
                 policy_info = iam_client.get_policy(PolicyArn=policy_arn)
@@ -68,7 +86,7 @@ def enumerate_iam_policies(iam_client, output_file):
             # List inline policies for the user
             inline_policies = iam_client.list_user_policies(UserName=user_name)
             for policy_name in inline_policies['PolicyNames']:
-                logging.info(f"[*] Checking inline policy: {policy_name} for user: {user_name}")
+                logging.info(f"{Fore.MAGENTA}[*] Checking inline policy: {policy_name} for user: {user_name}")
 
                 # Get the inline policy document
                 inline_policy_document = iam_client.get_user_policy(UserName=user_name, PolicyName=policy_name)['PolicyDocument']
@@ -77,7 +95,7 @@ def enumerate_iam_policies(iam_client, output_file):
                 check_policy_vulnerabilities(inline_policy_document, user_name, 'inline policy', output_file)
 
     except Exception as e:
-        logging.error(f"Error processing IAM policies: {e}")
+        logging.error(f"{Fore.RED}Error processing IAM policies: {e}")
 
 def check_policy_vulnerabilities(policy_document, user_name, policy_type, output_file):
     """Check the policy document for risky actions."""
@@ -104,18 +122,21 @@ def check_policy_vulnerabilities(policy_document, user_name, policy_type, output
             with open(output_file, 'a') as f:
                 for action in risky_actions:
                     f.write(f"User: {user_name}, Policy: {policy_type}, Risky Action: {action} - {VULNERABLE_ACTIONS[action]}\n")
-            logging.info(f"[*] Found risky actions for user {user_name}: {', '.join(risky_actions)}")
+            logging.info(f"{Fore.RED}[*] Found risky actions for user {user_name}: {', '.join(risky_actions)}")
 
 if __name__ == '__main__':
+    # Print the fancy banner
+    print_banner()
+
     # Initialize AWS IAM client
     iam_client = boto3.client('iam')
 
     # Output file to save results
     output_file = "output.txt"
 
-    logging.info("Starting IAM policy enumeration...")
+    logging.info(f"{Fore.BLUE}Starting IAM policy enumeration...")
 
     # Start enumerating policies
     enumerate_iam_policies(iam_client, output_file)
 
-    logging.info("IAM policy enumeration completed.")
+    logging.info(f"{Fore.GREEN}IAM policy enumeration completed.")
